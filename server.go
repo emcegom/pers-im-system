@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -31,12 +32,12 @@ func (server *Server) BroadCast(user *User, msg string) {
 	server.Message <- sendMsg
 }
 
-func (server *Server) ListenMessage(){
+func (server *Server) ListenMessage() {
 	for {
-		msg := <- server.Message
+		msg := <-server.Message
 
 		server.mapLock.Lock()
-		for _, cli := range server.OnlineMap{
+		for _, cli := range server.OnlineMap {
 			cli.C <- msg
 		}
 		server.mapLock.Unlock()
@@ -51,6 +52,25 @@ func (server *Server) Handler(conn net.Conn) {
 	server.mapLock.Unlock()
 
 	server.BroadCast(user, "user online")
+
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				server.BroadCast(user, "user offline")
+				return
+			}
+
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn Read Err : ", err)
+				return
+			}
+
+			msg := string(buf[:n-1])
+			server.BroadCast(user, msg)
+		}
+	}()
 }
 
 func (server *Server) Start() {
