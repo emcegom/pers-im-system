@@ -79,7 +79,7 @@ func (server *Server) Handler(conn net.Conn) {
 		case <- isALive:
 
 
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * 300):
 			user.SendMsg("connection timeout")
 
 			close(user.C)
